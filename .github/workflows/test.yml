@@ -1,0 +1,73 @@
+# .github/workflows/test.yml
+#
+# Runs the streamcraft test suite on every push and pull request.
+#
+# The key challenge for CI with a GStreamer library is that GStreamer's Python
+# bindings come from the system package manager (apt), not from PyPI. This means
+# we can't just do `pip install -r requirements.txt` — we need to install system
+# packages first, then install the library in editable mode.
+#
+# Hardware-dependent tests (@pytest.mark.hardware) are never run in CI —
+# pytest.ini already excludes them with: addopts = -m "not hardware"
+
+name: Tests
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  test:
+    name: "Python ${{ matrix.python-version }} / Ubuntu"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install GStreamer system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            python3-gi \
+            gir1.2-gstreamer-1.0 \
+            gir1.2-gst-plugins-base-1.0 \
+            gir1.2-gst-plugins-bad-1.0 \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad \
+            gstreamer1.0-plugins-ugly \
+            gstreamer1.0-libav \
+            gstreamer1.0-tools \
+            gstreamer1.0-alsa \
+            v4l-utils \
+            xvfb
+
+      - name: Install library and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[aiohttp]"
+          pip install pytest
+
+      - name: Run tests
+        run: xvfb-run python -m pytest --tb=short
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-py${{ matrix.python-version }}
+          path: .pytest_cache/
+          retention-days: 7

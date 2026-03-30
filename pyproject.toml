@@ -1,0 +1,48 @@
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "streamcraft"
+version         = "0.1.0"
+description     = "Fluent Python wrappers for GStreamer — build pipelines, control cameras, and manage WebRTC sessions without the boilerplate."
+readme          = "README.md"
+license         = { text = "MIT" }
+requires-python = ">=3.9"
+
+# GStreamer Python bindings are system packages — they come from apt, not PyPI.
+# We cannot list them as dependencies here because pip cannot install them.
+# The README documents the required apt packages instead.
+dependencies = []
+
+keywords = [
+    "gstreamer", "webrtc", "video", "audio", "streaming",
+    "pipeline", "v4l2", "ptz", "camera", "raspberry-pi",
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: POSIX :: Linux",
+]
+
+[project.optional-dependencies]
+aiohttp = ["aiohttp>=3.9"]
+
+[project.urls]
+Homepage   = "https://github.com/ranaweerasupun/streamcraft"
+Repository = "https://github.com/ranaweerasupun/streamcraft"
+Issues     = "https://github.com/ranaweerasupun/streamcraft/issues"
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["streamcraft*"]

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>streamcraft — Streaming Interface</title>
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --bg:           #0d1117;
+      --surface:      #161b22;
+      --surface-alt:  #1c2128;
+      --border:       #30363d;
+      --accent:       #e07020;
+      --accent-dim:   #7a3a0a;
+      --text:         #e6edf3;
+      --text-muted:   #7d8590;
+      --green:        #3fb950;
+      --red:          #f85149;
+      --radius:       10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .brand span:first-child { color: var(--accent); }
+    .brand span:last-child  { color: var(--text); }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    /* Each status indicator is a coloured dot followed by a label */
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .dot.on {
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    /* ── Main layout ───────────────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Video section (left column) ───────────────────────────────────────── */
+    .video-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+    }
+
+    /* Remote video (Pi camera) — 16:9 with a black background when empty */
+    video {
+      width: 100%;
+      display: block;
+      background: #000;
+    }
+    #remoteVideo  { aspect-ratio: 16/9; }
+    #localPreview { aspect-ratio: 16/9; max-height: 180px; }
+
+    .video-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────────────────── */
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover:not(:disabled) {
+      background: #21262d;
+      border-color: #8b949e;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    button.primary:hover:not(:disabled) { background: #c5621c; border-color: #c5621c; }
+
+    button.danger {
+      background: #8b0000;
+      border-color: #8b0000;
+      color: #fff;
+      font-weight: 600;
+    }
+    button.danger:hover:not(:disabled) { background: var(--red); border-color: var(--red); }
+
+    /* ── Volume slider ─────────────────────────────────────────────────────── */
+    input[type="range"] {
+      width: 100px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Right column (controls panel) ────────────────────────────────────── */
+    .controls-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── PTZ sliders ────────────────────────────────────────────────────────── */
+    .ptz-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .ptz-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ptz-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .ptz-label-row strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .ptz-value {
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    input[type="range"].ptz {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    /* Disabled state for PTZ controls when not connected */
+    .ptz-grid.disabled input { opacity: 0.3; pointer-events: none; }
+    .ptz-grid.disabled button { opacity: 0.3; pointer-events: none; }
+
+    .ptz-footer {
+      padding: 0 14px 14px;
+    }
+
+    /* ── Camera unavailable notice ─────────────────────────────────────────── */
+    .notice {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      font-style: italic;
+    }
+
+    /* ── Connection info card ──────────────────────────────────────────────── */
+    .info-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 14px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row span:first-child { color: var(--text-muted); }
+    .info-row span:last-child  { font-family: monospace; color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span>pipe</span><span>wright</span>
+    <span style="color:var(--text-muted); font-weight:400; font-size:13px; margin-left:10px;">
+      Streaming Interface
+    </span>
+  </div>
+
+  <div class="status-row">
+    <div class="status-item">
+      <div class="dot" id="dotVideo"></div>
+      <span>Video</span>
+    </div>
+    <div class="status-item">
+      <div class="dot" id="dotAudio"></div>
+      <span>Audio</span>
+    </div>
+    <div class="status-item">
+      <div class="dot" id="dotCamera"></div>
+      <span>Camera Control</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Left column: video feeds ──────────────────────────────────────── -->
+  <div class="video-section">
+
+    <!-- Pi camera feed (remote) -->
+    <div class="card">
+      <div class="card-header">
+        <span>Pi Camera</span>
+        <span id="resolutionLabel" style="font-size:11px; color:var(--text-muted)"></span>
+      </div>
+      <video id="remoteVideo" autoplay playsinline></video>
+      <div class="video-controls">
+        <button class="primary" id="connectBtn">Connect</button>
+        <button class="danger"  id="disconnectBtn" style="display:none">Disconnect</button>
+        <button id="fullscreenBtn" disabled>⛶ Fullscreen</button>
+        <button id="muteBtn" disabled>🔊 Mute</button>
+        <input  id="volumeSlider" type="range" min="0" max="100" value="100" disabled />
+      </div>
+    </div>
+
+    <!-- Your own camera (local preview) -->
+    <div class="card">
+      <div class="card-header">Your Camera (local preview)</div>
+      <video id="localPreview" autoplay playsinline muted></video>
+    </div>
+
+  </div>
+
+  <!-- ── Right column: controls ─────────────────────────────────────────── -->
+  <div class="controls-section">
+
+    <!-- PTZ camera controls -->
+    <div class="card">
+      <div class="card-header">
+        <span>Camera Control</span>
+        <span id="ptzStatus" style="font-size:11px; color:var(--text-muted)">not connected</span>
+      </div>
+
+      <div class="ptz-grid disabled" id="ptzGrid">
+        <div class="ptz-row">
+          <div class="ptz-label-row">
+            <strong>Pan</strong>
+            <span class="ptz-value" id="panDisplay">—</span>
+          </div>
+          <input type="range" class="ptz" id="panSlider"
+                 min="-468000" max="468000" value="0" step="3600" disabled />
+        </div>
+
+        <div class="ptz-row">
+          <div class="ptz-label-row">
+            <strong>Tilt</strong>
+            <span class="ptz-value" id="tiltDisplay">—</span>
+          </div>
+          <input type="range" class="ptz" id="tiltSlider"
+                 min="-324000" max="324000" value="0" step="3600" disabled />
+        </div>
+
+        <div class="ptz-row">
+          <div class="ptz-label-row">
+            <strong>Zoom</strong>
+            <span class="ptz-value" id="zoomDisplay">—</span>
+          </div>
+          <input type="range" class="ptz" id="zoomSlider"
+                 min="100" max="400" value="100" step="10" disabled />
+        </div>
+      </div>
+
+      <div class="ptz-footer">
+        <button id="centerBtn" style="width:100%" disabled>⊙ Center &amp; Reset Zoom</button>
+      </div>
+
+      <p class="notice" id="ptzNotice" style="display:none">
+        This camera does not expose PTZ controls.
+      </p>
+    </div>
+
+    <!-- Connection info -->
+    <div class="card">
+      <div class="card-header">Connection Info</div>
+      <div class="info-grid">
+        <div class="info-row">
+          <span>Server</span>
+          <span id="infoServer">—</span>
+        </div>
+        <div class="info-row">
+          <span>WebRTC state</span>
+          <span id="infoWebrtc">disconnected</span>
+        </div>
+        <div class="info-row">
+          <span>ICE state</span>
+          <span id="infoIce">—</span>
+        </div>
+        <div class="info-row">
+          <span>Camera PTZ</span>
+          <span id="infoPtz">—</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURATION
+// All URLs are derived from the page's own origin so that this file works
+// without modification regardless of which hostname is used to access it.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WS_BASE      = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+const WEBRTC_URL   = `${WS_BASE}/ws`;
+const CAMERA_URL   = `${WS_BASE}/camera`;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// All mutable state lives in one object so it's easy to inspect in DevTools
+// and easy to reset on disconnect.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const state = {
+  pc:           null,   // RTCPeerConnection
+  signalingWs:  null,   // WebSocket for WebRTC signaling (/ws)
+  cameraWs:     null,   // WebSocket for PTZ control (/camera)
+  localStream:  null,   // MediaStream from getUserMedia
+  pendingIce:   [],     // ICE candidates buffered before answer arrives
+  hasAnswer:    false,  // true once setRemoteDescription(answer) completes
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI ELEMENT REFERENCES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ui = {
+  remoteVideo:   document.getElementById('remoteVideo'),
+  localPreview:  document.getElementById('localPreview'),
+  connectBtn:    document.getElementById('connectBtn'),
+  disconnectBtn: document.getElementById('disconnectBtn'),
+  fullscreenBtn: document.getElementById('fullscreenBtn'),
+  muteBtn:       document.getElementById('muteBtn'),
+  volumeSlider:  document.getElementById('volumeSlider'),
+
+  dotVideo:   document.getElementById('dotVideo'),
+  dotAudio:   document.getElementById('dotAudio'),
+  dotCamera:  document.getElementById('dotCamera'),
+
+  ptzGrid:    document.getElementById('ptzGrid'),
+  ptzStatus:  document.getElementById('ptzStatus'),
+  ptzNotice:  document.getElementById('ptzNotice'),
+  panSlider:  document.getElementById('panSlider'),
+  tiltSlider: document.getElementById('tiltSlider'),
+  zoomSlider: document.getElementById('zoomSlider'),
+  panDisplay: document.getElementById('panDisplay'),
+  tiltDisplay:document.getElementById('tiltDisplay'),
+  zoomDisplay:document.getElementById('zoomDisplay'),
+  centerBtn:  document.getElementById('centerBtn'),
+
+  infoServer: document.getElementById('infoServer'),
+  infoWebrtc: document.getElementById('infoWebrtc'),
+  infoIce:    document.getElementById('infoIce'),
+  infoPtz:    document.getElementById('infoPtz'),
+  resolutionLabel: document.getElementById('resolutionLabel'),
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WEBRTC — signaling and peer connection
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function connect() {
+  ui.connectBtn.disabled = true;
+  ui.connectBtn.textContent = 'Connecting…';
+  ui.infoServer.textContent = location.host;
+
+  // 1. Request camera and microphone access.
+  //    We try all three combinations in order to handle devices that have
+  //    one but not the other.
+  state.localStream = await getLocalMedia();
+  const hasVideo = !!(state.localStream?.getVideoTracks().length);
+  const hasAudio = !!(state.localStream?.getAudioTracks().length);
+  ui.localPreview.srcObject = hasVideo ? state.localStream : null;
+
+  // 2. Create the peer connection.
+  //    No STUN or TURN servers — Tailscale's overlay network means both
+  //    peers have directly-routable addresses and don't need NAT traversal.
+  state.pc = new RTCPeerConnection({
+    iceServers: [],
+    bundlePolicy:  'max-bundle',
+    rtcpMuxPolicy: 'require',
+  });
+
+  // 3. Attach media transceivers.
+  //    sendrecv: we send our camera/mic AND receive the Pi's camera/mic.
+  //    recvonly: if we don't have a local track, we still want to receive.
+  state.pc.addTransceiver('video', { direction: hasVideo ? 'sendrecv' : 'recvonly' });
+  state.pc.addTransceiver('audio', { direction: hasAudio ? 'sendrecv' : 'recvonly' });
+  if (hasVideo) state.pc.getTransceivers()[0].sender.replaceTrack(state.localStream.getVideoTracks()[0]);
+  if (hasAudio) state.pc.getTransceivers()[1].sender.replaceTrack(state.localStream.getAudioTracks()[0]);
+
+  // 4. Route incoming tracks to the remote video element.
+  const remoteStream = new MediaStream();
+  ui.remoteVideo.srcObject = remoteStream;
+
+  state.pc.ontrack = (ev) => {
+    remoteStream.addTrack(ev.track);
+    if (ev.track.kind === 'video') {
+      setDot(ui.dotVideo, true);
+      // Show video resolution once the track settles
+      ev.track.onunmute = () => {
+        const settings = ev.track.getSettings();
+        if (settings.width) ui.resolutionLabel.textContent = `${settings.width}×${settings.height}`;
+      };
+    }
+    if (ev.track.kind === 'audio') setDot(ui.dotAudio, true);
+
+    // Safari requires an explicit play() call to start audio
+    ui.remoteVideo.play().catch(() => {});
+
+    ui.muteBtn.disabled = false;
+    ui.volumeSlider.disabled = false;
+    ui.fullscreenBtn.disabled = false;
+    updateInfoWebrtc('connected');
+  };
+
+  // 5. Forward local ICE candidates to the Pi via the signaling WebSocket.
+  state.pc.onicecandidate = (ev) => {
+    if (ev.candidate && state.signalingWs?.readyState === WebSocket.OPEN) {
+      state.signalingWs.send(JSON.stringify({ type: 'candidate', candidate: ev.candidate }));
+    }
+  };
+
+  state.pc.oniceconnectionstatechange = () => {
+    ui.infoIce.textContent = state.pc.iceConnectionState;
+  };
+
+  // 6. Open the signaling WebSocket and immediately create + send the offer.
+  state.signalingWs = new WebSocket(WEBRTC_URL);
+
+  state.signalingWs.onopen = async () => {
+    const offer = await state.pc.createOffer();
+    await state.pc.setLocalDescription(offer);
+    state.signalingWs.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+  };
+
+  state.signalingWs.onmessage = async (ev) => {
+    const msg = JSON.parse(ev.data);
+
+    if (msg.type === 'answer') {
+      // The Pi has responded with an SDP answer — apply it.
+      await state.pc.setRemoteDescription({ type: 'answer', sdp: msg.sdp });
+      state.hasAnswer = true;
+      // Drain any ICE candidates that arrived before the answer
+      for (const c of state.pendingIce) await addIce(c);
+      state.pendingIce = [];
+      showDisconnectButton();
+
+    } else if (msg.type === 'candidate') {
+      // Remote ICE candidate — might arrive before or after the answer.
+      if (!state.hasAnswer) state.pendingIce.push(msg.candidate);
+      else await addIce(msg.candidate);
+    }
+  };
+
+  state.signalingWs.onclose = () => {
+    if (state.hasAnswer) return;  // normal closure after disconnect
+    resetUI();
+  };
+
+  // 7. Also connect the camera control WebSocket.
+  connectCameraWs();
+}
+
+async function addIce(candidate) {
+  try { await state.pc.addIceCandidate(candidate); } catch (_) {}
+}
+
+async function getLocalMedia() {
+  // Try progressively more permissive constraints until we get something.
+  for (const constraints of [
+    { video: true, audio: true },
+    { video: true, audio: false },
+    { video: false, audio: true },
+  ]) {
+    try { return await navigator.mediaDevices.getUserMedia(constraints); }
+    catch (_) { continue; }
+  }
+  return null;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PTZ CAMERA CONTROL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function connectCameraWs() {
+  state.cameraWs = new WebSocket(CAMERA_URL);
+
+  state.cameraWs.onopen = () => {
+    setDot(ui.dotCamera, true);
+    ui.infoCamera = 'connected';
+  };
+
+  state.cameraWs.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+
+    // The server sends a 'status' message on connect with the camera's
+    // current position — use it to initialise the sliders correctly.
+    if (msg.type === 'status' || msg.type === 'result') {
+      const d = msg.data;
+
+      if (!d.available) {
+        // No PTZ controls on this camera — show the notice and hide grid.
+        ui.ptzNotice.style.display = 'block';
+        ui.infoPtz.textContent = 'not available';
+        return;
+      }
+
+      // Camera has PTZ — enable controls and set slider ranges from the
+      // camera's actual hardware limits (auto-detected by V4L2PTZCamera).
+      if (msg.type === 'status') {
+        if (d.ranges?.pan) {
+          ui.panSlider.min  = d.ranges.pan.min;
+          ui.panSlider.max  = d.ranges.pan.max;
+        }
+        if (d.ranges?.tilt) {
+          ui.tiltSlider.min = d.ranges.tilt.min;
+          ui.tiltSlider.max = d.ranges.tilt.max;
+        }
+        if (d.ranges?.zoom) {
+          ui.zoomSlider.min = d.ranges.zoom.min;
+          ui.zoomSlider.max = d.ranges.zoom.max;
+        }
+        enablePtz();
+        ui.ptzStatus.textContent = 'connected';
+        ui.infoPtz.textContent = 'available';
+      }
+
+      // Update slider positions and display values to match actual position
+      ui.panSlider.value  = d.pan;
+      ui.tiltSlider.value = d.tilt;
+      ui.zoomSlider.value = d.zoom;
+      updatePtzDisplays(d.pan, d.tilt, d.zoom, d.ranges);
+    }
+  };
+
+  state.cameraWs.onclose = () => {
+    setDot(ui.dotCamera, false);
+    disablePtz();
+    ui.ptzStatus.textContent = 'disconnected';
+  };
+}
+
+function sendPtz() {
+  if (state.cameraWs?.readyState !== WebSocket.OPEN) return;
+  state.cameraWs.send(JSON.stringify({
+    pan:  parseInt(ui.panSlider.value),
+    tilt: parseInt(ui.tiltSlider.value),
+    zoom: parseInt(ui.zoomSlider.value),
+  }));
+}
+
+function updatePtzDisplays(pan, tilt, zoom, ranges) {
+  // Convert raw V4L2 units (arc-seconds × 100) to degrees for display.
+  // If no ranges are available, show the raw integer value.
+  const toDeg = (v) => (v / 3600).toFixed(1) + '°';
+  const toZoom = (v, r) => r
+    ? ((v - r.min) / (r.max - r.min) * 100).toFixed(0) + '%'
+    : v;
+
+  ui.panDisplay.textContent  = toDeg(pan);
+  ui.tiltDisplay.textContent = toDeg(tilt);
+  ui.zoomDisplay.textContent = ranges?.zoom ? toZoom(zoom, ranges.zoom) : zoom;
+}
+
+function enablePtz() {
+  ui.ptzGrid.classList.remove('disabled');
+  [ui.panSlider, ui.tiltSlider, ui.zoomSlider, ui.centerBtn].forEach(e => e.disabled = false);
+}
+
+function disablePtz() {
+  ui.ptzGrid.classList.add('disabled');
+  [ui.panSlider, ui.tiltSlider, ui.zoomSlider, ui.centerBtn].forEach(e => e.disabled = true);
+  [ui.panDisplay, ui.tiltDisplay, ui.zoomDisplay].forEach(e => e.textContent = '—');
+}
+
+// Wire up PTZ slider events — send on input (while dragging) for responsive feel
+ui.panSlider.oninput  = () => { ui.panDisplay.textContent  = (parseInt(ui.panSlider.value)  / 3600).toFixed(1) + '°'; sendPtz(); };
+ui.tiltSlider.oninput = () => { ui.tiltDisplay.textContent = (parseInt(ui.tiltSlider.value) / 3600).toFixed(1) + '°'; sendPtz(); };
+ui.zoomSlider.oninput = () => { sendPtz(); };
+
+ui.centerBtn.onclick = () => {
+  // Reset to center position and minimum zoom.
+  // The server will clamp to the actual hardware limits.
+  ui.panSlider.value  = 0;
+  ui.tiltSlider.value = 0;
+  ui.zoomSlider.value = ui.zoomSlider.min;
+  sendPtz();
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DISCONNECT
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function disconnect() {
+  // Close the peer connection — this triggers GStreamer pipeline cleanup
+  // on the server side via handle_ws()'s finally block.
+  state.pc?.close();
+  state.signalingWs?.close();
+  state.cameraWs?.close();
+  state.localStream?.getTracks().forEach(t => t.stop());
+
+  state.pc          = null;
+  state.signalingWs = null;
+  state.cameraWs    = null;
+  state.localStream = null;
+  state.pendingIce  = [];
+  state.hasAnswer   = false;
+
+  ui.remoteVideo.srcObject  = null;
+  ui.localPreview.srcObject = null;
+  ui.resolutionLabel.textContent = '';
+  resetUI();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function resetUI() {
+  setDot(ui.dotVideo,  false);
+  setDot(ui.dotAudio,  false);
+  setDot(ui.dotCamera, false);
+  disablePtz();
+  ui.ptzStatus.textContent = 'not connected';
+  ui.ptzNotice.style.display = 'none';
+  ui.muteBtn.disabled = true;
+  ui.volumeSlider.disabled = true;
+  ui.fullscreenBtn.disabled = true;
+  ui.remoteVideo.muted = false;
+  ui.remoteVideo.volume = 1;
+  ui.muteBtn.textContent  = '🔊 Mute';
+  ui.volumeSlider.value = 100;
+  ui.connectBtn.textContent = 'Connect';
+  ui.connectBtn.disabled = false;
+  ui.connectBtn.style.display = 'inline-flex';
+  ui.disconnectBtn.style.display = 'none';
+  updateInfoWebrtc('disconnected');
+  ui.infoIce.textContent = '—';
+  ui.infoPtz.textContent = '—';
+}
+
+function showDisconnectButton() {
+  ui.connectBtn.style.display    = 'none';
+  ui.disconnectBtn.style.display = 'inline-flex';
+}
+
+function setDot(dot, on) {
+  dot.classList.toggle('on', on);
+}
+
+function updateInfoWebrtc(text) {
+  ui.infoWebrtc.textContent = text;
+}
+
+// Video controls
+ui.connectBtn.onclick    = connect;
+ui.disconnectBtn.onclick = disconnect;
+
+ui.fullscreenBtn.onclick = () => {
+  if (ui.remoteVideo.requestFullscreen) ui.remoteVideo.requestFullscreen();
+  else if (ui.remoteVideo.webkitRequestFullscreen) ui.remoteVideo.webkitRequestFullscreen();
+};
+
+ui.muteBtn.onclick = () => {
+  ui.remoteVideo.muted = !ui.remoteVideo.muted;
+  ui.muteBtn.textContent = ui.remoteVideo.muted ? '🔇 Unmute' : '🔊 Mute';
+};
+
+ui.volumeSlider.oninput = () => {
+  ui.remoteVideo.volume = ui.volumeSlider.value / 100;
+};
+
+// Initialise UI state on page load
+resetUI();
+</script>
+
+</body>
+</html>
