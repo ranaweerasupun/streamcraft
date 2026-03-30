@@ -2,12 +2,21 @@
 #
 # Runs the streamcraft test suite on every push and pull request.
 #
-# The key challenge for CI with a GStreamer library is that GStreamer's Python
-# bindings come from the system package manager (apt), not from PyPI. This means
-# we can't just do `pip install -r requirements.txt` — we need to install system
-# packages first, then install the library in editable mode.
+# IMPORTANT — why this workflow does not use setup-python:
 #
-# Hardware-dependent tests (@pytest.mark.hardware) are never run in CI —
+# streamcraft depends on GStreamer's Python bindings (python3-gi), which are
+# installed by apt into the *system* Python's site-packages. GitHub's
+# setup-python action installs a completely separate, isolated Python into
+# /opt/hostedtoolcache/ that has no access to system site-packages. These two
+# Python installations don't know about each other, so `import gi` would fail
+# even after `apt install python3-gi`.
+#
+# The correct approach for a library that requires system packages is to use
+# the system Python directly. This also reflects how users actually run the
+# library — on Raspberry Pi OS, Ubuntu, or Debian, always with the system
+# Python and system GStreamer bindings.
+#
+# Hardware-dependent tests (@pytest.mark.hardware) are never run in CI.
 # pytest.ini already excludes them with: addopts = -m "not hardware"
 
 name: Tests
@@ -20,28 +29,23 @@ on:
 
 jobs:
   test:
-    name: "Python ${{ matrix.python-version }} / Ubuntu"
+    name: "Ubuntu latest / system Python"
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-
     steps:
+      # ── 1. Check out the repository ────────────────────────────────────────
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
+      # ── 2. Install GStreamer and its Python bindings via apt ────────────────
+      # python3-gi and the gir typelibs go into the system Python's
+      # site-packages, which is exactly where the system Python will find them.
       - name: Install GStreamer system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y \
             python3-gi \
+            python3-pip \
             gir1.2-gstreamer-1.0 \
             gir1.2-gst-plugins-base-1.0 \
             gir1.2-gst-plugins-bad-1.0 \
@@ -55,19 +59,34 @@ jobs:
             v4l-utils \
             xvfb
 
-      - name: Install library and test dependencies
+      # ── 3. Install streamcraft and pytest into the system Python ────────────
+      # We use --break-system-packages here intentionally: this is a disposable
+      # CI container that is destroyed after the job, so there is no risk of
+      # conflicts with other system packages persisting anywhere.
+      - name: Install streamcraft and test dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[aiohttp]"
-          pip install pytest
+          python3 -m pip install --break-system-packages -e ".[aiohttp]"
+          python3 -m pip install --break-system-packages pytest
 
+      # ── 4. Verify that `import gi` works before running tests ───────────────
+      # This step makes CI failures easier to diagnose: if the GStreamer
+      # bindings are not accessible, this step fails with a clear message
+      # rather than a confusing error buried in pytest output.
+      - name: Verify GStreamer Python bindings are accessible
+        run: |
+          python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst; Gst.init(None); print('✓ GStreamer bindings OK')"
+
+      # ── 5. Run the test suite ───────────────────────────────────────────────
+      # xvfb-run provides a virtual display so GStreamer elements that need
+      # a display (autovideosink etc.) don't fail in the headless CI environment.
       - name: Run tests
-        run: xvfb-run python -m pytest --tb=short
+        run: xvfb-run python3 -m pytest --tb=short
 
+      # ── 6. Upload test results on failure ──────────────────────────────────
       - name: Upload test results on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-results-py${{ matrix.python-version }}
+          name: pytest-results
           path: .pytest_cache/
           retention-days: 7
