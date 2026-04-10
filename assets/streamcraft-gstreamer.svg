@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- streamcraft blog header image — 1200×630 -->
+
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1.2 0   0   0  0.18
+                0.4 0.1 0   0  0.06
+                0   0   0   0  0
+                0   0   0   1  0"
+        result="amber-blur"/>
+      <feMerge>
+        <feMergeNode in="amber-blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <pattern id="dots" x="0" y="0" width="36" height="36" patternUnits="userSpaceOnUse">
+      <rect width="36" height="36" fill="none"/>
+      <rect x="17" y="17" width="2" height="2" fill="#12182a"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0a0e1a"/>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+
+  <!-- connectors -->
+  <line x1="263" y1="248" x2="283" y2="248" stroke="#a05016" stroke-width="2"/>
+  <line x1="294" y1="248" x2="307" y2="248" stroke="#a05016" stroke-width="2"/>
+  <polygon points="294,248 283,239 283,257" fill="#e07020"/>
+  <circle cx="262" cy="248" r="3" fill="#a05016"/>
+  <circle cx="308" cy="248" r="3" fill="#a05016"/>
+  <line x1="473" y1="248" x2="493" y2="248" stroke="#a05016" stroke-width="2"/>
+  <line x1="504" y1="248" x2="517" y2="248" stroke="#a05016" stroke-width="2"/>
+  <polygon points="504,248 493,239 493,257" fill="#e07020"/>
+  <circle cx="472" cy="248" r="3" fill="#a05016"/>
+  <circle cx="518" cy="248" r="3" fill="#a05016"/>
+  <line x1="683" y1="248" x2="703" y2="248" stroke="#a05016" stroke-width="2"/>
+  <line x1="714" y1="248" x2="727" y2="248" stroke="#a05016" stroke-width="2"/>
+  <polygon points="714,248 703,239 703,257" fill="#e07020"/>
+  <circle cx="682" cy="248" r="3" fill="#a05016"/>
+  <circle cx="728" cy="248" r="3" fill="#a05016"/>
+  <line x1="893" y1="248" x2="913" y2="248" stroke="#a05016" stroke-width="2"/>
+  <line x1="924" y1="248" x2="937" y2="248" stroke="#a05016" stroke-width="2"/>
+  <polygon points="924,248 913,239 913,257" fill="#e07020"/>
+  <circle cx="892" cy="248" r="3" fill="#a05016"/>
+  <circle cx="938" cy="248" r="3" fill="#a05016"/>
+
+  <!-- nodes -->
+  <rect x="101" y="221" width="158" height="54" rx="13" fill="#16193a" stroke="#e07020" stroke-width="2" filter="url(#glow)"/>
+  <text x="180" y="248" text-anchor="middle" dominant-baseline="central" font-family="'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="16" font-weight="bold" fill="#e07020">v4l2src</text>
+  <rect x="311" y="221" width="158" height="54" rx="13" fill="#16193a" stroke="#e07020" stroke-width="2" filter="url(#glow)"/>
+  <text x="390" y="248" text-anchor="middle" dominant-baseline="central" font-family="'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="16" font-weight="bold" fill="#e07020">videoconvert</text>
+  <rect x="521" y="221" width="158" height="54" rx="13" fill="#16193a" stroke="#e07020" stroke-width="2" filter="url(#glow)"/>
+  <text x="600" y="248" text-anchor="middle" dominant-baseline="central" font-family="'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="16" font-weight="bold" fill="#e07020">x264enc</text>
+  <rect x="731" y="221" width="158" height="54" rx="13" fill="#16193a" stroke="#e07020" stroke-width="2" filter="url(#glow)"/>
+  <text x="810" y="248" text-anchor="middle" dominant-baseline="central" font-family="'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="16" font-weight="bold" fill="#e07020">h264parse</text>
+  <rect x="941" y="221" width="158" height="54" rx="13" fill="#16193a" stroke="#e07020" stroke-width="2" filter="url(#glow)"/>
+  <text x="1020" y="248" text-anchor="middle" dominant-baseline="central" font-family="'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="16" font-weight="bold" fill="#e07020">rtph264pay</text>
+
+  <!-- separator -->
+  <line x1="500" y1="317" x2="700" y2="317" stroke="#50280c" stroke-width="1"/>
+
+  <!-- title -->
+  <text x="600" y="421" text-anchor="middle" font-family="'DejaVu Sans Condensed', 'Liberation Sans', Arial Narrow, sans-serif" font-size="82" font-weight="bold" letter-spacing="-1">
+    <tspan fill="#e07020">stream</tspan><tspan fill="#f0f5ff">craft</tspan>
+  </text>
+
+  <!-- subtitle -->
+  <text x="600" y="453" text-anchor="middle" font-family="'DejaVu Sans', 'Liberation Sans', Arial, sans-serif" font-size="21" fill="#78849b">Fluent Python wrappers for GStreamer</text>
+
+</svg>

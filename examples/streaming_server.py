@@ -86,8 +86,8 @@ BASE_DIR = Path(__file__).parent
 # Everything else is derived from them automatically.
 # ─────────────────────────────────────────────────────────────────────────────
 
-TAILSCALE_HOSTNAME = "sbrsl"          # your device name in Tailscale
-TAILSCALE_DOMAIN   = "turkey-trench.ts.net"  # your tailnet domain
+TAILSCALE_HOSTNAME = "device"          # your device name in Tailscale
+TAILSCALE_DOMAIN   = "tail123ff1.ts.net:8443"  # your tailnet domain
 VIDEO_DEV          = "/dev/video0"          # camera device
 AUDIO_DEV          = "default"              # ALSA input device (microphone)
 OUTPUT_AUDIO_DEV   = "default"              # ALSA output device (speaker)
