@@ -7,7 +7,7 @@ Fluent Python wrappers for GStreamer — build pipelines, control cameras, and m
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.kernel.org/)
 
-![StreamCraft-logo](assets/streamcraft-gstreamer.jpg)
+![StreamCraft-logo](assets/streamcraft-gstreamer-logo.jpg)
 
 ---
 
